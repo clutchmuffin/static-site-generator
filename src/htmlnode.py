@@ -2,6 +2,14 @@ from typing import override
 
 
 class HTMLNode:
+    """
+    A node in an HTML tree representing a single element or text segment.
+
+    Subclasses should implement `to_html` to define how the node is rendered
+    as an HTML string. This base class provides common attributes for tags,
+    text content, child nodes, and HTML attributes.
+    """
+
     def __init__(
         self,
         tag: str | None = None,

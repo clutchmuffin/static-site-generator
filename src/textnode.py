@@ -3,6 +3,13 @@ from typing import override
 
 
 class TextType(Enum):
+    """
+    Enumeration of supported inline text types.
+
+    Each member represents a kind of text segment (e.g., plain, bold, link)
+    that can appear in a document.
+    """
+
     PLAIN = "plain"
     BOLD = "bold"
     ITALIC = "italic"
@@ -12,6 +19,14 @@ class TextType(Enum):
 
 
 class TextNode:
+    """
+    A node representing a single piece of inline text with a type and optional URL.
+
+    Used to model segments of text in a document, where each segment has a
+    specific type (from TextType) and optionally an associated URL for links
+    or images.
+    """
+
     def __init__(self, text: str, text_type: TextType, url: str | None = None) -> None:
         """
         Create a text node.
