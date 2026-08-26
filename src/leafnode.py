@@ -13,8 +13,8 @@ class LeafNode(HTMLNode):
 
     def __init__(
         self,
-        tag: str,
-        value: str | None,
+        tag: str | None,
+        value: str,
         props: dict[str, str] | None = None,
     ) -> None:
         """
