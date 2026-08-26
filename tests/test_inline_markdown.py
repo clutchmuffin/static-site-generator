@@ -6,6 +6,7 @@ from inline_markdown import (
     split_nodes_delimiter,
     split_nodes_image,
     split_nodes_link,
+    text_to_textnodes,
 )
 from textnode import TextNode, TextType
 
@@ -653,6 +654,170 @@ class TestSplitNodesLink(unittest.TestCase):
                 TextNode("here", TextType.LINK, "x.dev"),
             ],
         )
+
+
+class TestTextToTextnodes(unittest.TestCase):
+    # Basic cases
+    def test_plain_text_only(self):
+        result = text_to_textnodes("just some text")
+        self.assertEqual(result, [TextNode("just some text", TextType.PLAIN)])
+
+    def test_empty_string(self):
+        # Empty segments are dropped by the delimiter passes
+        result = text_to_textnodes("")
+        self.assertEqual(result, [])
+
+    # Single delimiters
+    def test_single_bold(self):
+        result = text_to_textnodes("**bold**")
+        self.assertEqual(result, [TextNode("bold", TextType.BOLD)])
+
+    def test_single_italic(self):
+        result = text_to_textnodes("_italic_")
+        self.assertEqual(result, [TextNode("italic", TextType.ITALIC)])
+
+    def test_single_code(self):
+        result = text_to_textnodes("`code`")
+        self.assertEqual(result, [TextNode("code", TextType.CODE)])
+
+    def test_bold_in_sentence(self):
+        result = text_to_textnodes("This is **bold** text")
+        self.assertEqual(
+            result,
+            [
+                TextNode("This is ", TextType.PLAIN),
+                TextNode("bold", TextType.BOLD),
+                TextNode(" text", TextType.PLAIN),
+            ],
+        )
+
+    # Mixed inline formatting
+    def test_bold_italic_code_mixed(self):
+        result = text_to_textnodes("**bold** and _italic_ and `code`")
+        self.assertEqual(
+            result,
+            [
+                TextNode("bold", TextType.BOLD),
+                TextNode(" and ", TextType.PLAIN),
+                TextNode("italic", TextType.ITALIC),
+                TextNode(" and ", TextType.PLAIN),
+                TextNode("code", TextType.CODE),
+            ],
+        )
+
+    def test_bold_pair_not_mangled_by_italic_split(self):
+        # Bold must be handled before italic so "**" isn't read as empty italics
+        result = text_to_textnodes("**b**")
+        self.assertEqual(result, [TextNode("b", TextType.BOLD)])
+
+    def test_nested_plain_segments_preserved(self):
+        result = text_to_textnodes("a **b** c _d_ e")
+        self.assertEqual(
+            result,
+            [
+                TextNode("a ", TextType.PLAIN),
+                TextNode("b", TextType.BOLD),
+                TextNode(" c ", TextType.PLAIN),
+                TextNode("d", TextType.ITALIC),
+                TextNode(" e", TextType.PLAIN),
+            ],
+        )
+
+    # Images and links
+    def test_image(self):
+        result = text_to_textnodes("![alt text](img.png)")
+        self.assertEqual(
+            result, [TextNode("alt text", TextType.IMAGE, "img.png")]
+        )
+
+    def test_link(self):
+        result = text_to_textnodes("[boot](boot.dev)")
+        self.assertEqual(
+            result, [TextNode("boot", TextType.LINK, "boot.dev")]
+        )
+
+    def test_image_and_link_in_one_string(self):
+        result = text_to_textnodes("![pic](p.png) and [here](x.dev)")
+        self.assertEqual(
+            result,
+            [
+                TextNode("pic", TextType.IMAGE, "p.png"),
+                TextNode(" and ", TextType.PLAIN),
+                TextNode("here", TextType.LINK, "x.dev"),
+            ],
+        )
+
+    # Kitchen sink
+    def test_full_pipeline(self):
+        result = text_to_textnodes(
+            "Hello **bold** world with _italic_ and `code`, "
+            "plus a [link](x.dev) and ![img](i.png)"
+        )
+        self.assertEqual(
+            result,
+            [
+                TextNode("Hello ", TextType.PLAIN),
+                TextNode("bold", TextType.BOLD),
+                TextNode(" world with ", TextType.PLAIN),
+                TextNode("italic", TextType.ITALIC),
+                TextNode(" and ", TextType.PLAIN),
+                TextNode("code", TextType.CODE),
+                TextNode(", plus a ", TextType.PLAIN),
+                TextNode("link", TextType.LINK, "x.dev"),
+                TextNode(" and ", TextType.PLAIN),
+                TextNode("img", TextType.IMAGE, "i.png"),
+            ],
+        )
+
+    def test_link_brackets_not_treated_as_delimiters(self):
+        # Link/image splitting runs before delimiter splitting
+        result = text_to_textnodes("[x](y.dev) **b**")
+        self.assertEqual(
+            result,
+            [
+                TextNode("x", TextType.LINK, "y.dev"),
+                TextNode(" ", TextType.PLAIN),
+                TextNode("b", TextType.BOLD),
+            ],
+        )
+
+    # Underscores are the italic delimiter
+    def test_underscore_delimiter_in_sentence(self):
+        result = text_to_textnodes("this is _italic_ text")
+        self.assertEqual(
+            result,
+            [
+                TextNode("this is ", TextType.PLAIN),
+                TextNode("italic", TextType.ITALIC),
+                TextNode(" text", TextType.PLAIN),
+            ],
+        )
+
+    def test_underscore_in_url_is_literal(self):
+        # Link/URL underscores are safe because links are split before
+        # the italic delimiter pass and pass through as LINK nodes
+        result = text_to_textnodes("see [my_var](https://x.dev/foo_bar)")
+        self.assertEqual(
+            result,
+            [
+                TextNode("see ", TextType.PLAIN),
+                TextNode("my_var", TextType.LINK, "https://x.dev/foo_bar"),
+            ],
+        )
+
+    def test_odd_underscores_in_plain_text_raise(self):
+        # snake_case has a single underscore, an unmatched italic delimiter
+        with self.assertRaises(ValueError):
+            _ = text_to_textnodes("use snake_case names")
+
+    # Errors
+    def test_unbalanced_bold_raises(self):
+        with self.assertRaises(ValueError):
+            _ = text_to_textnodes("unbalanced **bold")
+
+    def test_unbalanced_code_raises(self):
+        with self.assertRaises(ValueError):
+            _ = text_to_textnodes("broken `code")
 
 
 if __name__ == "__main__":

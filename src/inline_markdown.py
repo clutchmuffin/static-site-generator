@@ -3,6 +3,44 @@ import re
 from textnode import TextNode, TextType
 
 
+def text_to_textnodes(text: str) -> list[TextNode]:
+    """
+    Convert a string of inline markdown into a list of TextNodes.
+
+    Runs the full inline parsing pipeline: images and links are split out
+    first, then bold, italic, and code delimiters. Each step operates only
+    on remaining PLAIN nodes, so already-converted nodes are left untouched.
+
+    The order is significant. Image and link syntax must be handled before
+    delimiter splitting, since their brackets would otherwise be treated as
+    plain text. Bold must be split before italic so that "**" pairs are not
+    seen as empty italic segments.
+
+    Example:
+        text_to_textnodes("This is **bold** and _italic_")
+        # -> [TextNode("This is ", TextType.PLAIN),
+        #     TextNode("bold", TextType.BOLD),
+        #     TextNode(" and ", TextType.PLAIN),
+        #     TextNode("italic", TextType.ITALIC)]
+
+    Args:
+        text: The raw inline markdown string to convert.
+
+    Returns:
+        A new list of TextNodes representing the parsed inline content.
+
+    Raises:
+        ValueError: If any delimiter appears without a matching closer.
+    """
+    starter = TextNode(text, TextType.PLAIN)
+    nodes = split_nodes_image([starter])
+    nodes = split_nodes_link(nodes)
+    nodes = split_nodes_delimiter(nodes, "**", TextType.BOLD)
+    nodes = split_nodes_delimiter(nodes, "_", TextType.ITALIC)
+    nodes = split_nodes_delimiter(nodes, "`", TextType.CODE)
+    return nodes
+
+
 def split_nodes_delimiter(
     old_nodes: list[TextNode], delimiter: str, text_type: TextType
 ) -> list[TextNode]:
