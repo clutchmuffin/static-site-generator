@@ -79,6 +79,18 @@ class TextNode:
         return f"TextNode({self.text}, {self.text_type.value}, {self.url})"
 
     def text_node_to_html_node(self, text_node: "TextNode") -> LeafNode:
+        """
+        Convert a TextNode into its corresponding LeafNode representation.
+
+        Args:
+            text_node: The TextNode to convert.
+
+        Returns:
+            A LeafNode representing the same content in HTML.
+
+        Raises:
+            ValueError: If a LINK or IMAGE TextNode is missing a required URL.
+        """
         match text_node.text_type:
             case TextType.PLAIN:
                 return LeafNode(None, text_node.text, None)
