@@ -1,6 +1,10 @@
 import unittest
 
-from inline_markdown import split_nodes_delimiter
+from inline_markdown import (
+    extract_markdown_images,
+    extract_markdown_links,
+    split_nodes_delimiter,
+)
 from textnode import TextNode, TextType
 
 
@@ -208,6 +212,135 @@ class TestSplitNodesDelimiter(unittest.TestCase):
             [
                 TextNode("a ", TextType.PLAIN),
                 TextNode(" b", TextType.PLAIN),
+            ],
+        )
+
+
+class TestExtractMarkdownImages(unittest.TestCase):
+    # Basic extraction
+    def test_single_image(self):
+        text = "![pic](img.png)"
+        self.assertEqual(extract_markdown_images(text), [("pic", "img.png")])
+
+    def test_multiple_images_in_order(self):
+        text = "![one](1.png) middle ![two](2.png) end ![three](3.png)"
+        self.assertEqual(
+            extract_markdown_images(text),
+            [("one", "1.png"), ("two", "2.png"), ("three", "3.png")],
+        )
+
+    def test_image_with_empty_alt_text(self):
+        text = "![](logo.png)"
+        self.assertEqual(extract_markdown_images(text), [("", "logo.png")])
+
+    def test_image_surrounded_by_other_text(self):
+        text = "Look at this ![cat](cat.jpg), pretty cute!"
+        self.assertEqual(extract_markdown_images(text), [("cat", "cat.jpg")])
+
+    def test_image_with_complex_url(self):
+        text = "![chart](https://cdn.example.com/charts/q3?v=2#revenue)"
+        self.assertEqual(
+            extract_markdown_images(text),
+            [("chart", "https://cdn.example.com/charts/q3?v=2#revenue")],
+        )
+
+    # Non-matches must return empty list
+    def test_no_images_returns_empty_list(self):
+        self.assertEqual(extract_markdown_images("plain text only"), [])
+
+    def test_links_are_not_images(self):
+        text = "[boot](boot.dev)"
+        self.assertEqual(extract_markdown_images(text), [])
+
+    def test_empty_string_returns_empty_list(self):
+        self.assertEqual(extract_markdown_images(""), [])
+
+    # Malformed syntax must not match
+    def test_missing_exclamation_is_not_an_image(self):
+        text = "this is [alt](img.png) a link, not an image"
+        self.assertEqual(extract_markdown_images(text), [])
+
+    def test_unclosed_bracket_does_not_match(self):
+        text = "![broken](img.png"
+        self.assertEqual(extract_markdown_images(text), [])
+
+    def test_unclosed_parenthesis_does_not_match(self):
+        text = "![broken]img.png)"
+        self.assertEqual(extract_markdown_images(text), [])
+
+    def test_nested_brackets_in_alt_do_not_match(self):
+        text = "![nested [brackets]](img.png)"
+        self.assertEqual(extract_markdown_images(text), [])
+
+
+class TestExtractMarkdownLinks(unittest.TestCase):
+    # Basic extraction
+    def test_single_link(self):
+        text = "[boot](boot.dev)"
+        self.assertEqual(extract_markdown_links(text), [("boot", "boot.dev")])
+
+    def test_multiple_links_in_order(self):
+        text = "[one](1.dev) middle [two](2.dev) end [three](3.dev)"
+        self.assertEqual(
+            extract_markdown_links(text),
+            [("one", "1.dev"), ("two", "2.dev"), ("three", "3.dev")],
+        )
+
+    def test_link_with_empty_anchor_text(self):
+        text = "[](boot.dev)"
+        self.assertEqual(extract_markdown_links(text), [("", "boot.dev")])
+
+    def test_link_surrounded_by_other_text(self):
+        text = "Click [here](page.html) to continue."
+        self.assertEqual(extract_markdown_links(text), [("here", "page.html")])
+
+    def test_link_with_complex_url(self):
+        text = "[docs](https://docs.example.com/guide?a=1&b=2#intro)"
+        self.assertEqual(
+            extract_markdown_links(text),
+            [("docs", "https://docs.example.com/guide?a=1&b=2#intro")],
+        )
+
+    # Non-matches must return empty list
+    def test_no_links_returns_empty_list(self):
+        self.assertEqual(extract_markdown_links("no links in here"), [])
+
+    def test_empty_string_returns_empty_list(self):
+        self.assertEqual(extract_markdown_links(""), [])
+
+    # Image/link distinction (the (?<!!) lookbehind)
+    def test_images_are_not_links(self):
+        text = "![pic](img.png)"
+        self.assertEqual(extract_markdown_links(text), [])
+
+    def test_mixed_images_and_links_extracted_correctly(self):
+        text = "![logo](logo.png) and [site](site.dev)"
+        self.assertEqual(extract_markdown_links(text), [("site", "site.dev")])
+        self.assertEqual(extract_markdown_images(text), [("logo", "logo.png")])
+
+    # Malformed syntax must not match
+    def test_unclosed_bracket_does_not_match(self):
+        text = "[broken](boot.dev"
+        self.assertEqual(extract_markdown_links(text), [])
+
+    def test_unclosed_parenthesis_does_not_match(self):
+        text = "[broken]boot.dev)"
+        self.assertEqual(extract_markdown_links(text), [])
+
+    def test_nested_brackets_in_anchor_do_not_match(self):
+        text = "[nested [text]](boot.dev)"
+        self.assertEqual(extract_markdown_links(text), [])
+
+    def test_parens_inside_url_break_the_match(self):
+        # URL part forbids parentheses, so this should not fully match
+        text = "[wiki](https://en.wikipedia.org/wiki/Python_(programming_language))"
+        self.assertNotEqual(
+            extract_markdown_links(text),
+            [
+                (
+                    "wiki",
+                    "https://en.wikipedia.org/wiki/Python_(programming_language)",
+                )
             ],
         )
 
