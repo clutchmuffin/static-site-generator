@@ -63,6 +63,114 @@ def split_nodes_delimiter(
     return new_nodes
 
 
+def split_nodes_image(old_nodes: list[TextNode]) -> list[TextNode]:
+    """
+    Split plain-text nodes around Markdown image references.
+
+    Scans each plain-text node for image syntax, replacing each image reference
+    with an `IMAGE` node and preserving surrounding content as `TEXT` nodes.
+    Non-text nodes are returned unchanged.
+
+    Args:
+        old_nodes: The list of text nodes to process.
+
+    Returns:
+        A list of text and image nodes in their original order.
+    """
+    new_nodes: list[TextNode] = []
+
+    for node in old_nodes:
+        # Only plain text nodes can contain markdown image syntax.
+        if node.text_type != TextType.PLAIN:
+            new_nodes.append(node)
+            continue
+
+        text_to_process: str = node.text
+
+        images: list[tuple[str, str]] = extract_markdown_images(node.text)
+
+        # With no images, preserve the original node unchanged.
+        if len(images) == 0:
+            new_nodes.append(node)
+            continue
+
+        for alt_text, url in images:
+            # Split once per the latest image markdown so later images remain in the unprocessed text.
+            image_markdown: str = f"![{alt_text}]({url})"
+            sections: list[str] = text_to_process.split(image_markdown, maxsplit=1)
+
+            if len(sections) != 2:
+                raise ValueError("Markdown was not formatted properly!")
+
+            # Add preceding ordinary text, but avoid empty text nodes.
+            if sections[0] != "":
+                new_nodes.append(TextNode(sections[0], TextType.PLAIN, None))
+
+            new_nodes.append(TextNode(alt_text, TextType.IMAGE, url))
+
+            text_to_process = sections[1]
+
+        # Add any ordinary text that followed the final image.
+        if text_to_process != "":
+            new_nodes.append(TextNode(text_to_process, TextType.PLAIN, None))
+
+    return new_nodes
+
+
+def split_nodes_link(old_nodes: list[TextNode]) -> list[TextNode]:
+    """
+    Split plain-text nodes around Markdown link references.
+
+    Scans each plain-text node for link syntax, replacing each link reference
+    with an `LINK` node and preserving surrounding content as `TEXT` nodes.
+    Non-text nodes are returned unchanged.
+
+    Args:
+        old_nodes: The list of text nodes to process.
+
+    Returns:
+        A list of text and link nodes in their original order.
+    """
+    new_nodes: list[TextNode] = []
+
+    for node in old_nodes:
+        # Only plain text nodes can contain markdown link syntax.
+        if node.text_type != TextType.PLAIN:
+            new_nodes.append(node)
+            continue
+
+        text_to_process: str = node.text
+
+        links: list[tuple[str, str]] = extract_markdown_links(node.text)
+
+        # With no links, preserve the original node unchanged.
+        if len(links) == 0:
+            new_nodes.append(node)
+            continue
+
+        for text, url in links:
+            # Split once per the latest link markdown so later links remain in the unprocessed text.
+            link_markdown: str = f"[{text}]({url})"
+            sections: list[str] = text_to_process.split(link_markdown, maxsplit=1)
+
+            if len(sections) != 2:
+                raise ValueError("Markdown was not formatted properly!")
+
+            # Add preceding ordinary text, but avoid empty text nodes.
+            if sections[0] != "":
+                new_nodes.append(TextNode(sections[0], TextType.PLAIN, None))
+
+            new_nodes.append(TextNode(text, TextType.LINK, url))
+
+            text_to_process = sections[1]
+
+        # Add any ordinary text that followed the final link.
+        if text_to_process != "":
+            new_nodes.append(TextNode(text_to_process, TextType.PLAIN, None))
+
+    return new_nodes
+
+
 def extract_markdown_images(text: str) -> list[tuple[str, str]]:
     """
     Extract all markdown image references from a string.

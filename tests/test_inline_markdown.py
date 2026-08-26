@@ -4,6 +4,8 @@ from inline_markdown import (
     extract_markdown_images,
     extract_markdown_links,
     split_nodes_delimiter,
+    split_nodes_image,
+    split_nodes_link,
 )
 from textnode import TextNode, TextType
 
@@ -341,6 +343,314 @@ class TestExtractMarkdownLinks(unittest.TestCase):
                     "wiki",
                     "https://en.wikipedia.org/wiki/Python_(programming_language)",
                 )
+            ],
+        )
+
+
+class TestSplitNodesImage(unittest.TestCase):
+    # Basic splitting
+    def test_single_image_in_middle(self):
+        node = TextNode("hello ![cat](cat.png) world", TextType.PLAIN)
+        result = split_nodes_image([node])
+        self.assertEqual(
+            result,
+            [
+                TextNode("hello ", TextType.PLAIN),
+                TextNode("cat", TextType.IMAGE, "cat.png"),
+                TextNode(" world", TextType.PLAIN),
+            ],
+        )
+
+    def test_image_at_start(self):
+        node = TextNode("![cat](cat.png) and rest", TextType.PLAIN)
+        result = split_nodes_image([node])
+        self.assertEqual(
+            result,
+            [
+                TextNode("cat", TextType.IMAGE, "cat.png"),
+                TextNode(" and rest", TextType.PLAIN),
+            ],
+        )
+
+    def test_image_at_end(self):
+        node = TextNode("before ![cat](cat.png)", TextType.PLAIN)
+        result = split_nodes_image([node])
+        self.assertEqual(
+            result,
+            [
+                TextNode("before ", TextType.PLAIN),
+                TextNode("cat", TextType.IMAGE, "cat.png"),
+            ],
+        )
+
+    def test_entire_string_is_image(self):
+        node = TextNode("![cat](cat.png)", TextType.PLAIN)
+        result = split_nodes_image([node])
+        self.assertEqual(result, [TextNode("cat", TextType.IMAGE, "cat.png")])
+
+    def test_multiple_images_in_order(self):
+        node = TextNode("![a](1.png) x ![b](2.png) y ![c](3.png)", TextType.PLAIN)
+        result = split_nodes_image([node])
+        self.assertEqual(
+            result,
+            [
+                TextNode("a", TextType.IMAGE, "1.png"),
+                TextNode(" x ", TextType.PLAIN),
+                TextNode("b", TextType.IMAGE, "2.png"),
+                TextNode(" y ", TextType.PLAIN),
+                TextNode("c", TextType.IMAGE, "3.png"),
+            ],
+        )
+
+    def test_adjacent_images(self):
+        node = TextNode("![a](1.png)![b](2.png)", TextType.PLAIN)
+        result = split_nodes_image([node])
+        self.assertEqual(
+            result,
+            [
+                TextNode("a", TextType.IMAGE, "1.png"),
+                TextNode("b", TextType.IMAGE, "2.png"),
+            ],
+        )
+
+    def test_image_with_empty_alt(self):
+        node = TextNode("![](pic.png)", TextType.PLAIN)
+        result = split_nodes_image([node])
+        self.assertEqual(result, [TextNode("", TextType.IMAGE, "pic.png")])
+
+    def test_image_with_unicode_alt(self):
+        node = TextNode("![café 🌍](pic.png)", TextType.PLAIN)
+        result = split_nodes_image([node])
+        self.assertEqual(result, [TextNode("café 🌍", TextType.IMAGE, "pic.png")])
+
+    def test_image_with_complex_url(self):
+        node = TextNode(
+            "![chart](https://cdn.example.com/charts/q3?v=2#top)", TextType.PLAIN
+        )
+        result = split_nodes_image([node])
+        self.assertEqual(
+            result,
+            [
+                TextNode(
+                    "chart", TextType.IMAGE, "https://cdn.example.com/charts/q3?v=2#top"
+                )
+            ],
+        )
+
+    # Passthrough cases
+    def test_no_images_preserves_plain_node(self):
+        node = TextNode("just some text with [a link](x.dev)", TextType.PLAIN)
+        result = split_nodes_image([node])
+        self.assertEqual(result, [node])
+
+    def test_empty_input_list(self):
+        self.assertEqual(split_nodes_image([]), [])
+
+    def test_non_plain_nodes_pass_through_unchanged(self):
+        node = TextNode("already bold", TextType.BOLD)
+        result = split_nodes_image([node])
+        self.assertEqual(result, [node])
+
+    def test_non_plain_node_with_url_pass_through_unchanged(self):
+        node = TextNode("click", TextType.LINK, "https://example.com")
+        result = split_nodes_image([node])
+        self.assertEqual(result, [node])
+
+    def test_mixed_plain_and_non_plain_nodes(self):
+        nodes = [
+            TextNode("pic: ![cat](cat.png)", TextType.PLAIN),
+            TextNode("keep me", TextType.CODE),
+            TextNode("another ![dog](dog.png)", TextType.PLAIN),
+        ]
+        result = split_nodes_image(nodes)
+        self.assertEqual(
+            result,
+            [
+                TextNode("pic: ", TextType.PLAIN),
+                TextNode("cat", TextType.IMAGE, "cat.png"),
+                TextNode("keep me", TextType.CODE),
+                TextNode("another ", TextType.PLAIN),
+                TextNode("dog", TextType.IMAGE, "dog.png"),
+            ],
+        )
+
+    def test_links_are_not_split_as_images(self):
+        node = TextNode("see [here](x.dev) and ![pic](p.png)", TextType.PLAIN)
+        result = split_nodes_image([node])
+        self.assertEqual(
+            result,
+            [
+                TextNode("see [here](x.dev) and ", TextType.PLAIN),
+                TextNode("pic", TextType.IMAGE, "p.png"),
+            ],
+        )
+
+    def test_no_extra_empty_plain_nodes(self):
+        node = TextNode("![a](1.png) ![b](2.png)", TextType.PLAIN)
+        result = split_nodes_image([node])
+        self.assertEqual(
+            result,
+            [
+                TextNode("a", TextType.IMAGE, "1.png"),
+                TextNode(" ", TextType.PLAIN),
+                TextNode("b", TextType.IMAGE, "2.png"),
+            ],
+        )
+
+
+class TestSplitNodesLink(unittest.TestCase):
+    # Basic splitting
+    def test_single_link_in_middle(self):
+        node = TextNode("click [here](x.dev) now", TextType.PLAIN)
+        result = split_nodes_link([node])
+        self.assertEqual(
+            result,
+            [
+                TextNode("click ", TextType.PLAIN),
+                TextNode("here", TextType.LINK, "x.dev"),
+                TextNode(" now", TextType.PLAIN),
+            ],
+        )
+
+    def test_link_at_start(self):
+        node = TextNode("[here](x.dev) and rest", TextType.PLAIN)
+        result = split_nodes_link([node])
+        self.assertEqual(
+            result,
+            [
+                TextNode("here", TextType.LINK, "x.dev"),
+                TextNode(" and rest", TextType.PLAIN),
+            ],
+        )
+
+    def test_link_at_end(self):
+        node = TextNode("before [here](x.dev)", TextType.PLAIN)
+        result = split_nodes_link([node])
+        self.assertEqual(
+            result,
+            [
+                TextNode("before ", TextType.PLAIN),
+                TextNode("here", TextType.LINK, "x.dev"),
+            ],
+        )
+
+    def test_entire_string_is_link(self):
+        node = TextNode("[here](x.dev)", TextType.PLAIN)
+        result = split_nodes_link([node])
+        self.assertEqual(result, [TextNode("here", TextType.LINK, "x.dev")])
+
+    def test_multiple_links_in_order(self):
+        node = TextNode("[a](1.dev) x [b](2.dev) y [c](3.dev)", TextType.PLAIN)
+        result = split_nodes_link([node])
+        self.assertEqual(
+            result,
+            [
+                TextNode("a", TextType.LINK, "1.dev"),
+                TextNode(" x ", TextType.PLAIN),
+                TextNode("b", TextType.LINK, "2.dev"),
+                TextNode(" y ", TextType.PLAIN),
+                TextNode("c", TextType.LINK, "3.dev"),
+            ],
+        )
+
+    def test_adjacent_links(self):
+        node = TextNode("[a](1.dev)[b](2.dev)", TextType.PLAIN)
+        result = split_nodes_link([node])
+        self.assertEqual(
+            result,
+            [
+                TextNode("a", TextType.LINK, "1.dev"),
+                TextNode("b", TextType.LINK, "2.dev"),
+            ],
+        )
+
+    def test_link_with_empty_anchor(self):
+        node = TextNode("[](boot.dev)", TextType.PLAIN)
+        result = split_nodes_link([node])
+        self.assertEqual(result, [TextNode("", TextType.LINK, "boot.dev")])
+
+    def test_link_with_unicode_anchor(self):
+        node = TextNode("[café 🌍](x.dev)", TextType.PLAIN)
+        result = split_nodes_link([node])
+        self.assertEqual(result, [TextNode("café 🌍", TextType.LINK, "x.dev")])
+
+    def test_link_with_complex_url(self):
+        node = TextNode(
+            "[docs](https://docs.example.com/guide?a=1&b=2#intro)", TextType.PLAIN
+        )
+        result = split_nodes_link([node])
+        self.assertEqual(
+            result,
+            [
+                TextNode(
+                    "docs", TextType.LINK, "https://docs.example.com/guide?a=1&b=2#intro"
+                )
+            ],
+        )
+
+    # Passthrough cases
+    def test_no_links_preserves_plain_node(self):
+        node = TextNode("just text with no links at all", TextType.PLAIN)
+        result = split_nodes_link([node])
+        self.assertEqual(result, [node])
+
+    def test_empty_string_node_preserved(self):
+        node = TextNode("", TextType.PLAIN)
+        result = split_nodes_link([node])
+        self.assertEqual(result, [node])
+
+    def test_empty_input_list(self):
+        self.assertEqual(split_nodes_link([]), [])
+
+    def test_non_plain_nodes_pass_through_unchanged(self):
+        node = TextNode("already code", TextType.CODE)
+        result = split_nodes_link([node])
+        self.assertEqual(result, [node])
+
+    def test_non_plain_node_with_url_pass_through_unchanged(self):
+        node = TextNode("alt", TextType.IMAGE, "img.png")
+        result = split_nodes_link([node])
+        self.assertEqual(result, [node])
+
+    def test_mixed_plain_and_non_plain_nodes(self):
+        nodes = [
+            TextNode("go [there](x.dev) now", TextType.PLAIN),
+            TextNode("keep me", TextType.BOLD),
+            TextNode("and [back](y.dev)", TextType.PLAIN),
+        ]
+        result = split_nodes_link(nodes)
+        self.assertEqual(
+            result,
+            [
+                TextNode("go ", TextType.PLAIN),
+                TextNode("there", TextType.LINK, "x.dev"),
+                TextNode(" now", TextType.PLAIN),
+                TextNode("keep me", TextType.BOLD),
+                TextNode("and ", TextType.PLAIN),
+                TextNode("back", TextType.LINK, "y.dev"),
+            ],
+        )
+
+    def test_images_are_not_split_as_links(self):
+        # Image syntax stays literal plain text since (?<!!) excludes it
+        node = TextNode("![pic](p.png) then [here](x.dev)", TextType.PLAIN)
+        result = split_nodes_link([node])
+        self.assertEqual(
+            result,
+            [
+                TextNode("![pic](p.png) then ", TextType.PLAIN),
+                TextNode("here", TextType.LINK, "x.dev"),
+            ],
+        )
+
+    def test_whitespace_only_segment_preserved(self):
+        node = TextNode(" [here](x.dev)", TextType.PLAIN)
+        result = split_nodes_link([node])
+        self.assertEqual(
+            result,
+            [
+                TextNode(" ", TextType.PLAIN),
+                TextNode("here", TextType.LINK, "x.dev"),
             ],
         )
 
