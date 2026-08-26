@@ -1,3 +1,23 @@
+from enum import Enum
+
+
+class BlockType(Enum):
+    """
+    Enumeration of supported markdown block types.
+
+    Each member represents a kind of structural unit (e.g., heading, quote,
+    list) that a markdown document can be split into, used to decide how
+    each block is rendered as HTML.
+    """
+
+    PARAGRAPH = "paragraph"
+    HEADING = "heading"
+    CODE = "code"
+    QUOTE = "quote"
+    UNORDERED_LIST = "unordered_list"
+    ORDERED_LIST = "ordered_list"
+
+
 def markdown_to_blocks(markdown: str) -> list[str]:
     """Split a markdown document into blocks separated by blank lines.
 
