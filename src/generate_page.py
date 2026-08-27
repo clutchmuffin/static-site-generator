@@ -3,7 +3,9 @@ import os
 from block_markdown import extract_title, markdown_to_html_node
 
 
-def generate_page(from_path: str, template_path: str, dest_path: str) -> None:
+def generate_page(
+    basepath: str, from_path: str, template_path: str, dest_path: str
+) -> None:
     """
     Render a markdown file into a complete HTML page using a template.
 
@@ -14,6 +16,9 @@ def generate_page(from_path: str, template_path: str, dest_path: str) -> None:
     written to `dest_path`, creating any missing parent directories.
 
     Args:
+        basepath: The site's base path (e.g. "/" or "/blog/"). Root-anchored
+            `href="/...` and `src="/...` attributes in the template are
+            prefixed with this value.
         from_path: Path to the markdown source file.
         template_path: Path to the HTML template file.
         dest_path: Path where the generated HTML page should be written.
@@ -38,6 +43,9 @@ def generate_page(from_path: str, template_path: str, dest_path: str) -> None:
         "{{ Content }}", markdown_html_string
     )
 
+    final_template = final_template.replace('href="/', f'href="{basepath}')
+    final_template = final_template.replace('src="/', f'src="{basepath}')
+
     os.makedirs(os.path.dirname(dest_path), exist_ok=True)
 
     with open(dest_path, "w") as f:
@@ -45,23 +53,25 @@ def generate_page(from_path: str, template_path: str, dest_path: str) -> None:
 
 
 def generate_pages_recursive(
-    content_dir_path: str, template_path: str, dest_dir_path: str
+    basepath: str, content_dir_path: str, template_path: str, dest_dir_path: str
 ) -> None:
     """
     Render every markdown file in a directory tree into an HTML page.
 
-    Walks `content_dir`, mirroring its directory structure into `dest_dir`.
-    Each `.md` file is rendered via `generate_page` to a sibling `.html`
-    path (e.g. `content/blog/post.md` becomes `dest_dir/blog/post.html`);
-    non-markdown files are ignored.
+    Walks `content_dir_path`, mirroring its directory structure into
+    `dest_dir_path`. Each `.md` file is rendered via `generate_page` to a
+    sibling `.html` path (e.g. `content/blog/post.md` becomes
+    `dest_dir_path/blog/post.html`); non-markdown files are ignored.
 
     Args:
-        content_dir: Root directory containing the markdown source files.
+        basepath: The site's base path (e.g. "/" or "/blog/"), passed through
+            to `generate_page` for root-anchored `href`/`src` rewriting.
+        content_dir_path: Root directory containing the markdown source files.
         template_path: Path to the HTML template file.
-        dest_dir: Root directory where the generated HTML pages are written.
+        dest_dir_path: Root directory where the generated HTML pages are written.
 
     Returns:
-        None. Rendered pages are written under `dest_dir`.
+        None. Rendered pages are written under `dest_dir_path`.
     """
     file_list: list[str] = os.listdir(content_dir_path)
     for file_name in file_list:
@@ -70,6 +80,8 @@ def generate_pages_recursive(
 
         if os.path.isfile(content_file_path):
             dest_file_path = dest_file_path[:-3] + ".html"
-            generate_page(content_file_path, template_path, dest_file_path)
+            generate_page(basepath, content_file_path, template_path, dest_file_path)
         else:
-            generate_pages_recursive(content_file_path, template_path, dest_file_path)
+            generate_pages_recursive(
+                basepath, content_file_path, template_path, dest_file_path
+            )
