@@ -42,3 +42,34 @@ def generate_page(from_path: str, template_path: str, dest_path: str) -> None:
 
     with open(dest_path, "w") as f:
         _ = f.write(final_template)
+
+
+def generate_pages_recursive(
+    content_dir_path: str, template_path: str, dest_dir_path: str
+) -> None:
+    """
+    Render every markdown file in a directory tree into an HTML page.
+
+    Walks `content_dir`, mirroring its directory structure into `dest_dir`.
+    Each `.md` file is rendered via `generate_page` to a sibling `.html`
+    path (e.g. `content/blog/post.md` becomes `dest_dir/blog/post.html`);
+    non-markdown files are ignored.
+
+    Args:
+        content_dir: Root directory containing the markdown source files.
+        template_path: Path to the HTML template file.
+        dest_dir: Root directory where the generated HTML pages are written.
+
+    Returns:
+        None. Rendered pages are written under `dest_dir`.
+    """
+    file_list: list[str] = os.listdir(content_dir_path)
+    for file_name in file_list:
+        content_file_path: str = os.path.join(content_dir_path, file_name)
+        dest_file_path: str = os.path.join(dest_dir_path, file_name)
+
+        if os.path.isfile(content_file_path):
+            dest_file_path = dest_file_path[:-3] + ".html"
+            generate_page(content_file_path, template_path, dest_file_path)
+        else:
+            generate_pages_recursive(content_file_path, template_path, dest_file_path)
