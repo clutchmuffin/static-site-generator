@@ -58,37 +58,21 @@ def block_to_block_type(block: str) -> BlockType:
     Returns:
         The BlockType of the given block.
     """
+    lines: list[str] = block.split("\n")
 
-    # HEADINGS
     if block.startswith(("# ", "## ", "### ", "#### ", "##### ", "###### ")):
         return BlockType.HEADING
 
-    # CODE
     if block.startswith("```\n") and block.endswith("```"):
         return BlockType.CODE
 
-    lines: list[str] = block.split("\n")
-
-    # QUOTE
-    for line in lines:
-        if not line.startswith(">"):
-            break
-    else:
+    if all(line.startswith(">") for line in lines):
         return BlockType.QUOTE
 
-    # UNORDERED LIST
-    for line in lines:
-        if not line.startswith("- "):
-            break
-    else:
+    if all(line.startswith("- ") for line in lines):
         return BlockType.UNORDERED_LIST
 
-    # ORDERED LIST
-    for index, line in enumerate(lines, start=1):
-        if not line.startswith(f"{index}. "):
-            break
-    else:
+    if all(lines[i].startswith(f"{i + 1}. ") for i in range(len(lines))):
         return BlockType.ORDERED_LIST
 
-    # PARAGRAPH
     return BlockType.PARAGRAPH
