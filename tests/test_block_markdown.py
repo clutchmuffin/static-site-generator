@@ -3,6 +3,7 @@ import unittest
 from block_markdown import (
     BlockType,
     block_to_block_type,
+    extract_title,
     markdown_to_blocks,
     markdown_to_html_node,
 )
@@ -357,6 +358,52 @@ class TestMarkdownToHtmlNode(unittest.TestCase):
         node = markdown_to_html_node("just text")
         self.assertEqual(node.tag, "div")
         self.assertEqual(len(node.children), 1)
+
+
+class TestExtractTitle(unittest.TestCase):
+    # Basic extraction
+    def test_simple_title(self):
+        self.assertEqual(extract_title("# My Title"), "My Title")
+
+    def test_title_with_other_blocks(self):
+        markdown = "Some intro paragraph.\n\n# The Real Title\n\nMore text."
+        self.assertEqual(extract_title(markdown), "The Real Title")
+
+    def test_title_with_leading_blank_lines(self):
+        markdown = "\n\n# Title\n\ntext"
+        self.assertEqual(extract_title(markdown), "Title")
+
+    def test_title_with_trailing_whitespace_stripped(self):
+        self.assertEqual(extract_title("#   Padded   "), "Padded")
+
+    # Only H1 counts
+    def test_lower_level_headings_are_not_titles(self):
+        markdown = "## Not a title\n\n# Actual Title"
+        self.assertEqual(extract_title(markdown), "Actual Title")
+
+    def test_only_lower_level_headings_raise(self):
+        markdown = "## Not a title\n\n### Also not"
+        with self.assertRaises(ValueError):
+            _ = extract_title(markdown)
+
+    # First H1 wins
+    def test_first_h1_wins(self):
+        markdown = "# First Title\n\n# Second Title"
+        self.assertEqual(extract_title(markdown), "First Title")
+
+    def test_first_h1_after_other_blocks(self):
+        markdown = "Intro text.\n\n# Found Title\n\n## Ignored Heading"
+        self.assertEqual(extract_title(markdown), "Found Title")
+
+    # Errors
+    def test_no_title_raises(self):
+        markdown = "Just a paragraph with no heading."
+        with self.assertRaises(ValueError):
+            _ = extract_title(markdown)
+
+    def test_empty_document_raises(self):
+        with self.assertRaises(ValueError):
+            _ = extract_title("")
 
 
 if __name__ == "__main__":

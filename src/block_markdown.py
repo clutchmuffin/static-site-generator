@@ -83,6 +83,31 @@ def block_to_block_type(block: str) -> BlockType:
     return BlockType.PARAGRAPH
 
 
+def extract_title(markdown: str) -> str:
+    """
+    Extract the first H1 title from a markdown document.
+
+    Scans the document's blocks for the first one that starts with a single
+    `#` followed by a space, and returns its text with the heading marker
+    stripped.
+
+    Args:
+        markdown: The raw markdown document as a string.
+
+    Returns:
+        The title text of the first H1 heading.
+
+    Raises:
+        ValueError: If the document contains no H1 heading.
+    """
+    blocks: list[str] = markdown_to_blocks(markdown)
+
+    for block in blocks:
+        if block.startswith("# "):
+            return block[2:].strip()
+    raise ValueError("No H1 title found in the markdown document")
+
+
 def markdown_to_html_node(markdown: str) -> ParentNode:
     """
     Convert a full markdown document into a tree of HTML nodes.
