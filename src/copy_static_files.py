@@ -20,7 +20,7 @@ def copy_files_recursive(src: str, dest: str) -> None:
         dest_path = os.path.join(dest, item)
 
         if os.path.isfile(src_path):
-            shutil.copy(src_path, dest_path)
+            _ = shutil.copy(src_path, dest_path)
             print(f"Copied: {src_path} -> {dest_path}")
         else:
             copy_files_recursive(src_path, dest_path)
