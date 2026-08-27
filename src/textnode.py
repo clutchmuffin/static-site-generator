@@ -78,35 +78,36 @@ class TextNode:
 
         return f"TextNode({self.text}, {self.text_type.value}, {self.url})"
 
-    def text_node_to_html_node(self, text_node: "TextNode") -> LeafNode:
-        """
-        Convert a TextNode into its corresponding LeafNode representation.
 
-        Args:
-            text_node: The TextNode to convert.
+def text_node_to_html_node(text_node: TextNode) -> LeafNode:
+    """
+    Convert a TextNode into its corresponding LeafNode representation.
 
-        Returns:
-            A LeafNode representing the same content in HTML.
+    Args:
+        text_node: The TextNode to convert.
 
-        Raises:
-            ValueError: If a LINK or IMAGE TextNode is missing a required URL.
-        """
-        match text_node.text_type:
-            case TextType.PLAIN:
-                return LeafNode(None, text_node.text, None)
-            case TextType.BOLD:
-                return LeafNode("b", text_node.text, None)
-            case TextType.ITALIC:
-                return LeafNode("i", text_node.text, None)
-            case TextType.CODE:
-                return LeafNode("code", text_node.text, None)
-            case TextType.LINK:
-                if text_node.url is None:
-                    raise ValueError("Link TextNode requires a URL")
-                return LeafNode("a", text_node.text, {"href": text_node.url})
-            case TextType.IMAGE:
-                if text_node.url is None:
-                    raise ValueError("Image TextNode requires a URL")
-                return LeafNode(
-                    "img", "", {"src": text_node.url, "alt": text_node.text}
-                )
+    Returns:
+        A LeafNode representing the same content in HTML.
+
+    Raises:
+        ValueError: If a LINK or IMAGE TextNode is missing a required URL.
+    """
+    match text_node.text_type:
+        case TextType.PLAIN:
+            return LeafNode(None, text_node.text, None)
+        case TextType.BOLD:
+            return LeafNode("b", text_node.text, None)
+        case TextType.ITALIC:
+            return LeafNode("i", text_node.text, None)
+        case TextType.CODE:
+            return LeafNode("code", text_node.text, None)
+        case TextType.LINK:
+            if text_node.url is None:
+                raise ValueError("Link TextNode requires a URL")
+            return LeafNode("a", text_node.text, {"href": text_node.url})
+        case TextType.IMAGE:
+            if text_node.url is None:
+                raise ValueError("Image TextNode requires a URL")
+            return LeafNode(
+                "img", "", {"src": text_node.url, "alt": text_node.text}
+            )
