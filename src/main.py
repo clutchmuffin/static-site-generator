@@ -1,11 +1,8 @@
-from textnode import TextNode, TextType
+from copy_static_files import copy_static_to_public
 
 
 def main():
-    test_object: TextNode = TextNode(
-        "Test Text", TextType.LINK, "https://www.google.com"
-    )
-    print(test_object)
+    copy_static_to_public()
 
 
 if __name__ == "__main__":
