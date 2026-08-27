@@ -26,9 +26,9 @@ def copy_files_recursive(src: str, dest: str) -> None:
             copy_files_recursive(src_path, dest_path)
 
 
-def copy_static_to_public() -> None:
-    """Wipe the public directory and copy the static directory into it."""
-    if os.path.exists("public"):
-        shutil.rmtree("public")
+def copy_static_to_docs() -> None:
+    """Wipe the docs directory and copy the static directory into it."""
+    if os.path.exists("docs"):
+        shutil.rmtree("docs")
 
-    copy_files_recursive("static", "public")
+    copy_files_recursive("static", "docs")
