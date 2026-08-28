@@ -9,7 +9,7 @@ site into a `docs/` folder that's ready to publish with GitHub Pages.
 This tool was used to build a little Tolkien fan club site, which now lives on
 GitHub Pages:
 
-[**Tolkien Fan Club**](https://clutchmuffin.github.io/static-site-generator/)
+[**Tolkien Fan Club**](https://clutchmuffin.github.io/md-page/)
 
 ![JRR Tolkien](static/images/tolkien.png)
 
